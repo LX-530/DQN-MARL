@@ -14,9 +14,12 @@ class EvacuationEnv:
     """疏散环境封装"""
     # === 可调奖励系数（供自动调参脚本覆盖） ===
     EVAC_REWARD: float = 50.0         # 新疏散一人奖励
-    DEATH_PENALTY: float = 200.0      # 新死亡惩罚/人
-    DEATH_ACC_PENALTY: float = 0.5    # 已死亡持续惩罚/人·步
-    ALIVE_BONUS: float = 1.0          # 存活激励/人·步
+    # === 奖励权重重新平衡 ===
+    # 将死亡惩罚大幅提高，确保智能体将"避免死亡"作为最高优先级；
+    # 同时显著降低每步的存活激励，避免出现"什么都不做但每步拿到大量正奖励"的策略。
+    DEATH_PENALTY: float = 500.0       # 新死亡惩罚/人（从200→500）
+    DEATH_ACC_PENALTY: float = 5.0     # 已死亡持续惩罚/人·步（从0.5→5.0）
+    ALIVE_BONUS: float = 0.1           # 存活激励/人·步（从1.0→0.1）
 
     def __init__(self, width=36, height=30, fire_zones=None, exit_location=None, num_people=150):
         self.width = width
@@ -236,7 +239,8 @@ class EvacuationEnv:
         # 根据剩余人员数量调整时间惩罚
         if remaining_people > 0:
             urgency_factor = remaining_people / self.num_people
-            time_penalty = -0.05 - (urgency_factor * 0.1)  # 剩余人员越多惩罚越重
+            # 加强时间惩罚：基准 -0.2，线性系数 0.3
+            time_penalty = -0.2 - (urgency_factor * 0.3)  # 剩余人员越多惩罚越重
             reward += time_penalty
         else:
             reward -= 0.02  # 全部疏散后的轻微时间惩罚
